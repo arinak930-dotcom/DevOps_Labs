@@ -1,0 +1,5 @@
+FROM debian
+RUN sudo apt-get update && apt-get install cowsay fortune 
+ADD entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
