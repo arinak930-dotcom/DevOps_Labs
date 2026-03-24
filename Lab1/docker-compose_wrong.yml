@@ -1,0 +1,5 @@
+services:
+  cowsay_wrong:
+    container_name: cow
+    build: .
+    restart: always
