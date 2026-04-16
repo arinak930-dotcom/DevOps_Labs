@@ -178,9 +178,11 @@ helm upgrade hello-release ./hello-chart -n lab --set image.tag=v2
 
 ![test](content/15.png)
 
-Дождалась завершения роллинг апдейт командой `kubectl rollout status` и посмотрела историю релизов через `helm history hello-release -n lab`. Видно две ревизии: первая в статусе `superseded`, вторая `deployed`. В браузере страница тоже обновилась и теперь там новый текст «Hello from Kubernetes! v2 HELM»:
+Дождалась завершения роллинг апдейт командой `kubectl rollout status` и посмотрела историю релизов через `helm history hello-release -n lab`. Видно две ревизии: первая в статусе `superseded`, вторая `deployed`:
 
 ![test](content/16.png)
+
+В браузере страница тоже обновилась и теперь там новый текст «Hello from Kubernetes! v2 HELM»:
 
 ![test](content/17.png)
 
