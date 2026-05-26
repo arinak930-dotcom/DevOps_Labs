@@ -1,0 +1,31 @@
+# HTTP -> HTTPS редирект
+server {
+    listen 80;
+    server_name myshop.local;
+    return 301 https://$host$request_uri;
+}
+# HTTPS виртуальный хост для магазина
+server {
+    listen 443 ssl;
+    server_name myshop.local;
+
+    ssl_certificate     /etc/nginx/ssl/selfsigned.crt;
+    ssl_certificate_key /etc/nginx/ssl/selfsigned.key;
+
+    root /var/www/myshop/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # ALIAS
+    location /images/ {
+        alias /var/www/myshop/static_files/;
+    }
+
+    location /secret {
+        return 200 "Hello! This is a secret page of shop!\n";
+        add_header Content-Type text/plain;
+    }
+}

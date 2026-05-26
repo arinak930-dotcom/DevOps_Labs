@@ -1,0 +1,22 @@
+# HTTP -> HTTPS редирект
+server {
+    listen 80;
+    server_name myblog.local;
+    return 301 https://$host$request_uri;
+}
+
+# HTTPS виртуальный хост для блога
+server {
+    listen 443 ssl;
+    server_name myblog.local;
+
+    ssl_certificate     /etc/nginx/ssl/selfsigned.crt;
+    ssl_certificate_key /etc/nginx/ssl/selfsigned.key;
+
+    root /var/www/myblog/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
