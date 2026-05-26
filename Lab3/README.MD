@@ -2,7 +2,7 @@
 
 ## Ход выполнения
 
-### Часть 1: настройка nginx
+### Часть 1
 
 Сначала я установила nginx стандартным способом через `apt`:
 
@@ -11,15 +11,15 @@ sudo apt update
 sudo apt install -y nginx
 ```
 
-После установки проверила, что сервис работает — статус `active (running)`:
+После установки проверила, что сервис работает и показывает статус `active (running)`:
 
 ![test](content/1.png)
 
-И открыла `http://localhost` в браузере, чтобы убедиться, что nginx отдаёт стандартную страницу-приветствие:
+И открыла `http://localhost` в браузере, чтобы удостовериться, что nginx отдает стандартную страницу-приветствие:
 
 ![test](content/2.png)
 
-Дальше по условию мне нужно было поднять «два пет-проекта на одном сервере». Я решила сделать их совсем простыми: первый — это «блог» (`myblog.local`), второй — «магазин» (`myshop.local`). Для каждого создала свою папку с `index.html`, а для магазина — ещё отдельную папку `static_files`, в которую положила картинку. Эта папка нужна, чтобы дальше показать работу директивы `alias` (один из пунктов ТЗ).
+Далее нужно было поднять два пет-проекта на одном сервере. Я решила сделать их совсем простыми: первый — это блог, второй — магазин. Для каждого создала свою папку с `index.html`, а для магазина — еще отдельную папку `static_files`, в которую положила картинку.
 
 ```bash
 sudo mkdir -p /var/www/myblog/html
@@ -27,11 +27,11 @@ sudo mkdir -p /var/www/myshop/html
 sudo mkdir -p /var/www/myshop/static_files
 ```
 
-Проверила, что всё создалось и файлы на месте:
+Проверила, что все создалось и файлы на месте:
 
 ![test](content/3.png)
 
-Чтобы сайты работали по HTTPS (пункт ТЗ №1), я сгенерировала самоподписанный SSL-сертификат на 365 дней через `openssl`. Это пара «приватный ключ + сертификат», которую nginx будет использовать для шифрования соединения. В реальном проекте сертификат брался бы у Let's Encrypt или другого CA, но для лабы самоподписанного достаточно — браузер будет ругаться, но HTTPS работать будет.
+Чтобы сайты работали по HTTPS, я сгенерировала самоподписанный SSL-сертификат на 365 дней через `openssl`. nginx будет использовать его для шифрования соединения. Для лабы достаточно самоподписанного, браузер будет ругаться, но HTTPS работать будет.
 
 ```bash
 sudo mkdir -p /etc/nginx/ssl
@@ -47,87 +47,13 @@ sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 
 ![test](content/5.png)
 
-Дальше я написала два конфига виртуальных хостов в `/etc/nginx/sites-available/` — отдельно для блога и отдельно для магазина. Это и есть пункт ТЗ №4: «настроить виртуальные хосты для обслуживания нескольких доменных имён на одном сервере». nginx по заголовку `Host` (директива `server_name` в конфиге) сам определяет, какому сайту отдать запрос, и оба сайта работают на одних и тех же портах 80 и 443.
-
-`myblog`:
-```nginx
-# HTTP -> HTTPS редирект (пункт ТЗ №2)
-server {
-    listen 80;
-    server_name myblog.local;
-    return 301 https://$host$request_uri;
-}
-
-# HTTPS виртуальный хост для блога (пункты ТЗ №1, №4)
-server {
-    listen 443 ssl;
-    server_name myblog.local;
-
-    ssl_certificate     /etc/nginx/ssl/selfsigned.crt;
-    ssl_certificate_key /etc/nginx/ssl/selfsigned.key;
-
-    root /var/www/myblog/html;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ =404;
-    }
-}
-```
-
-`myshop`:
-```nginx
-# HTTP -> HTTPS редирект
-server {
-    listen 80;
-    server_name myshop.local;
-    return 301 https://$host$request_uri;
-}
-
-# HTTPS виртуальный хост для магазина
-server {
-    listen 443 ssl;
-    server_name myshop.local;
-
-    ssl_certificate     /etc/nginx/ssl/selfsigned.crt;
-    ssl_certificate_key /etc/nginx/ssl/selfsigned.key;
-
-    root /var/www/myshop/html;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ =404;
-    }
-
-    # ALIAS (пункт ТЗ №3):
-    # URL вида /images/foo.png будет отдавать файл из /var/www/myshop/static_files/foo.png
-    # Отличие от root: при alias URL-префикс /images/ ОТБРАСЫВАЕТСЯ,
-    # а не дописывается к пути, как было бы у root.
-    location /images/ {
-        alias /var/www/myshop/static_files/;
-    }
-
-    # Что-то ещё (пункт ТЗ №5) — отдельный location со своим ответом
-    location /secret {
-        return 200 "Hello! This is a secret page of shop!\n";
-        add_header Content-Type text/plain;
-    }
-}
-```
-
-Чтобы конфиги стали активными, я создала на них симлинки в `sites-enabled/` и убрала дефолтный сайт, чтобы он не мешал:
-
-```bash
-sudo ln -sf /etc/nginx/sites-available/myblog /etc/nginx/sites-enabled/myblog
-sudo ln -sf /etc/nginx/sites-available/myshop /etc/nginx/sites-enabled/myshop
-sudo rm -f /etc/nginx/sites-enabled/default
-```
+Дальше я написала два конфига виртуальных хостов в `/etc/nginx/sites-available/` — отдельно для блога и отдельно для магазина. nginx по заголовку `Host` сам определяет, какому сайту отдать запрос, и оба сайта работают на одних и тех же портах 80 и 443.
 
 Прогнала проверку синтаксиса конфигов — обе строки `ok` и `successful`, значит можно перезапускать nginx:
 
 ![test](content/6.png)
 
-Чтобы домены `myblog.local` и `myshop.local` указывали на мою же машину, я добавила их в `/etc/hosts`. В обычной жизни этим занимается DNS, но для локальной лабы достаточно `hosts`-файла:
+Чтобы домены `myblog.local` и `myshop.local` указывали на мою же виртуальную машину, я добавила их в `/etc/hosts`:
 
 ```bash
 echo "127.0.0.1 myblog.local myshop.local" | sudo tee -a /etc/hosts
@@ -135,33 +61,26 @@ echo "127.0.0.1 myblog.local myshop.local" | sudo tee -a /etc/hosts
 
 ![test](content/7.png)
 
-После `sudo systemctl reload nginx` проверила, что всё работает. Сначала зашла на блог по HTTPS — открылась моя розовая страница, в адресной строке виден замочек (значит соединение по HTTPS):
+Далее я проверила, что все работает, и зашла на блог по HTTPS — открылась моя розовая страница, в адресной строке виден замочек (значит, соединение по HTTPS):
 
 ![test](content/8.png)
 
-Затем зашла на магазин — открылась голубая страница, на которой картинка подгружается по пути `/images/dog.png`. Сам файл лежит в `/var/www/myshop/static_files/dog.png`, а отдаётся по URL `/images/...` — это работает alias:
+Затем зашла на магазин — открылась голубая страница, на которой картинка подгружается по пути `/images/dog.png`. 
+Сам файл лежит в `/var/www/myshop/static_files/dog.png`, а отдаётся по URL `/images/...`, и таким образом работает alias:
 
 ![test](content/9.png)
 
-Чтобы показать, что alias реально работает, открыла картинку напрямую по её URL `/images/dog.png` — файл отдаётся:
+Чтобы показать, что alias реально работает, открыла картинку напрямую по ее URL `/images/dog.png`:
 
 ![test](content/10.png)
 
-Также проверила пункт «что-то ещё» — location `/secret`, который через директиву `return 200 "..."` отдаёт собственный текст, минуя файловую систему:
+Также я сделала секретную страничку, которая через директиву `return 200 "..."` отдает собственный текст, минуя файловую систему:
 
 ![test](content/11.png)
 
 И последнее, что нужно было показать — что редирект HTTP → HTTPS реально работает. Сделала запрос через `curl -I http://myblog.local` и получила в ответ код `301 Moved Permanently` с заголовком `Location: https://myblog.local/`. То есть любой пользователь, который случайно зайдёт по `http://`, будет автоматически переадресован на HTTPS:
 
 ![test](content/12.png)
-
-#### Что сделано по пунктам ТЗ
-
-1. **HTTPS с сертификатом.** Сгенерирован самоподписанный сертификат через `openssl` на 365 дней (`/etc/nginx/ssl/`). В каждом виртуальном хосте указаны директивы `ssl_certificate` и `ssl_certificate_key`. Сайты работают на 443 порту.
-2. **Принудительный редирект HTTP → HTTPS.** Для каждого виртуального хоста есть отдельный `server`-блок на 80 порту, который через `return 301 https://$host$request_uri;` перенаправляет все запросы на HTTPS. Проверено через `curl -I` — возвращается код 301.
-3. **Alias.** В конфиге `myshop` использована директива `location /images/ { alias /var/www/myshop/static_files/; }`. Отличие от `root` в том, что при `alias` URL-префикс `/images/` отбрасывается и подставляется указанный путь. Если бы я использовала `root /var/www/myshop/static_files/`, то по URL `/images/dog.png` nginx бы искал файл `/var/www/myshop/static_files/images/dog.png`, а с alias — просто `/var/www/myshop/static_files/dog.png`.
-4. **Виртуальные хосты.** Два отдельных конфига (`myblog` и `myshop`) в `/etc/nginx/sites-available/`, включены через симлинки в `sites-enabled/`. nginx по заголовку `Host` (директива `server_name`) отдаёт нужный сайт. Оба сайта работают на одних и тех же портах 80 и 443.
-5. **Дополнительно.** Добавлен location `/secret` с собственным ответом через `return 200 ...` — показывает, что в nginx можно отдавать содержимое не только из файлов, но и формировать ответ прямо в конфиге.
 
 ### Часть 2: проверка nginx на уязвимости
 
