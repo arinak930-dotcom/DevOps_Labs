@@ -1,0 +1,41 @@
+# Плохой CI/CD пайплайн.
+
+name: Bad CI/CD Pipeline
+
+on: [push, pull_request]
+
+jobs:
+
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@master 
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd app
+          pip install -r requirements.txt
+
+      - name: Run tests with API key
+        env:
+          API_KEY: "super-secret-api-key-12345"
+          DB_PASSWORD: "admin123"
+        run: |
+          echo "Running tests with API_KEY=$API_KEY" 
+          pytest tests/
+
+      - name: Build Docker image
+        run: |
+          cd app
+          docker build -t myapp:latest . 
+
+      - name: Deploy
+        run: |
+          echo "Deploying myapp:latest to production..."
+          echo "Done"
